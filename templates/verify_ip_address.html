@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>IP Address Verification</title>
+</head>
+<body>
+    <h1>IP Address Verification</h1>
+    {% if verification_successful %}
+        <p>Your IP address has been successfully verified.</p>
+        <p>You can now proceed to login.</p>
+    {% else %}
+        <p>Invalid verification token.</p>
+        <p>Please make sure you have copied the correct URL or request a new verification email.</p>
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<h1>Da li zelis da korisnika?</h1>
+<form method="post">
+  {% csrf_token %}
+  <input type="submit" name="" value="Delete">
+  <a href="{% url 'MyApp:simplelistview' %}">Cancle</a>
+</form>
+{% endblock %}

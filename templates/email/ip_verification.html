@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Email Verification</title>
+</head>
+<body>
+    <p>Dear {{ user.username }},</p>
+    <p>Please verify your IP address by clicking the link below:</p>
+    <p><a href="{{ verification_link }}">Verify IP Address</a></p>
+    <p>Thank you!</p>
+</body>
+</html>
