@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container" style="margin-bottom: 50px;">
+  <div class="container text-center">
+    <h1 class="display-4">{{ post.title }}</h1>
+    <p class="text-muted">Kategorija: {{ post.category }}</p>
+    <p>{{ post.text }}</p>
+    <p class="text-muted">Autor: {{ post.author }}</p>
+    <p class="text-muted">Kreirano: {{ post.created_date }}</p>
+
+    {% if request.user == post.author.user or user.userprofile.user_type == 'has_editor' or request.user.is_superuser %}
+    <a href="{% url 'MyApp:post_edit' slug=post.slug %}" class="btn btn-primary">Edituj</a>
+      <form action="{% url 'MyApp:post_delete' pk=post.pk %}" method="post" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Obriši</button>
+      </form>
+    {% else %}
+      <p>Niste ovlašćeni za uređivanje ovog posta.</p>
+    {% endif %}
+  </div>
+
+  <div class="text-center mt-5">
+    <h2 style="font-family: 'Times New Roman', sans-serif; padding-top:30px; padding-bottom:30px;">Komentari:</h2>
+    {% for comment in post.komentari.all %}
+      <div class="card mb-3">
+        <div class="card-body">
+          <p class="card-text">{{ comment.text }}</p>
+          <p class="card-subtitle text-muted">Autor: {{ comment.author }}</p>
+          <div class="card-body">
+            {% if request.user == comment.author.user or user.userprofile.user_type == 'has_editor' or request.user.is_superuser %}
+              <form action="{% url 'MyApp:delete_komentar' post_id=post.pk pk=comment.pk %}" method="post" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Obriši</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p class="text-muted">trenutno nema komentara.</p>
+    {% endfor %}
+
+    {% if user.userprofile.user_type == 'has_user' or user.userprofile.user_type == 'has_editor' or request.user.is_superuser %}
+      <form method="post" action="{% url 'MyApp:create_komentar' post_id=post.pk %}">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary" style="background-color:#328049; font-size:1.3em; border-radius:13px;">dodaj komentar</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

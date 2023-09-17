@@ -2,11 +2,26 @@
 {% load static %}
 {% block content %}
     <div class="container">
-        <h1>Ovdje se registruj</h1>
-        <form method="post" action="{% url 'register' %}">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit" class="btn btn-primary">register</button>
+      <form method="POST" action="{% url 'rest_framework:registration-view' %}">
+          {% csrf_token %}
+
+          <div>
+            <label for="username">Korisničko ime:</label>
+            <input type="text" name="username" id="username">
+          </div>
+
+          <div>
+            <label for="email">Email adresa:</label>
+            <input type="email" name="email" id="email">
+          </div>
+
+          <div>
+            <label for="password">Lozinka:</label>
+            <input type="password" name="password" id="password">
+          </div>
+
+          <div>
+            <input type="submit" value="Registruj se">
+          </div>
         </form>
-    </div>
     {% endblock %}

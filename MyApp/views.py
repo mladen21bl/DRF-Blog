@@ -1,126 +1,59 @@
 from django.shortcuts import redirect, get_object_or_404, render
-from django.views.generic import TemplateView, ListView, DetailView, DeleteView, UpdateView, CreateView
+from django.views.generic import TemplateView, ListView, DetailView, DeleteView, CreateView, UpdateView
 from djoser import views as djoser_views
-from .serializers import UserRegistrationSerializer
+from .serializers import UserRegistrationSerializer, PostSerializer
 from rest_framework import generics
-from django.contrib.auth.models import User
-from .serializers import UserRegistrationSerializer
-from django.shortcuts import get_object_or_404
-from django.utils.http import urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_text
+from django.contrib.auth import get_user_model, authenticate, login, logout
 from django.contrib.auth.tokens import default_token_generator
-from django.contrib.auth import get_user_model
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.encoding import force_bytes, force_str
 from django.urls import reverse, reverse_lazy
-from django.http import HttpResponseRedirect
-from django.shortcuts import redirect, render
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth import logout
-from django.contrib.auth.hashers import make_password
-from django.shortcuts import redirect
-from rest_framework import generics
-from .serializers import UserRegistrationSerializer
-from .models import UserProfile
-from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from .models import UserProfile
-from django.contrib.auth.models import User
-from django.contrib.auth.tokens import default_token_generator
-from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import send_mail
-from django.shortcuts import redirect
-from django.urls import reverse_lazy
-from django.views.generic import CreateView
-from .models import User, UserProfile
-from django.contrib.auth.tokens import default_token_generator
-from django.contrib.sites.shortcuts import get_current_site
-from django.core.mail import send_mail
-from django.shortcuts import redirect
-from django.urls import reverse_lazy
-from django.views.generic import CreateView
-from .models import User, UserProfile
-from django.utils.http import urlsafe_base64_encode
 from django.conf import settings
-from django.contrib.auth.views import PasswordResetView
+from django.contrib.auth.decorators import login_required
+from .models import UserProfile, Post, Komentar
+from django.template.loader import render_to_string
+from django.contrib.auth import views as auth_views
+from django.contrib.auth.views import PasswordResetCompleteView
+from django.contrib import messages
+from MyApp import models
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.db.models import Q
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core.exceptions import PermissionDenied
+from django.http import HttpResponseRedirect, HttpResponseForbidden
+from django.views.generic.detail import SingleObjectMixin
+import json
+from django.core.paginator import Paginator
 
 
+class CustomPasswordResetCompleteView(PasswordResetCompleteView):
+    template_name = 'password_reset_complete.html'
 
-class CustomPasswordResetView(PasswordResetView):
-    template_name = 'custom_password_reset.html'
-    email_template_name = 'custom_password_reset_email.html'
-    subject_template_name = 'custom_password_reset_subject.txt'
 
-    def send_verification_email(self, user):
-        token = default_token_generator.make_token(user)
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        current_site = self.request.get_host()
-        verification_url = reverse('MyApp:password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
-        verification_link = f"{current_site}{verification_url}"
-
-        # Render the email template with the verification URL
-        email_context = {
-            'password_reset_url': verification_link,
-        }
-        email_body = render_to_string(self.email_template_name, email_context)
-
-        # Send the verification email
-        subject = 'Reset Your Password'
-        from_email = settings.DEFAULT_FROM_EMAIL
-        to_email = user.email
-
-        send_mail(subject, email_body, from_email, [to_email])
-
-        # Redirect the user to a success page or appropriate view
-        return redirect('MyApp:verificationemailsent')
+class CustomPasswordResetView(auth_views.PasswordResetView):
+    template_name = 'password_reset_custom.html'
+    email_template_name = 'password_reset_email.html'
+    subject_template_name = 'password_reset_subject.txt'
+    success_url = reverse_lazy('password_reset_done')
 
 
 class IndexView(TemplateView):
     template_name = 'base.html'
 
-class ForbiddenView(TemplateView):
-    template_name = 'forbidden.html'
 
 class PasswordResetDoneView(TemplateView):
     template_name = 'password_sent.html'
 
+class VerificationEmailSentView(TemplateView):
+    template_name = 'verification_email_sent.html'
+
 class CheckView(TemplateView):
     template_name = 'check.html'
 
-class UserCreate(CreateView):
-    model = User
-    template_name = 'moj.html'
-    fields = ('email', 'username', 'password')
-
-    def form_valid(self, form):
-        # Kreiranje instance User objekta
-        user = form.save(commit=False)
-        user.is_active = False  # Postavljanje računa na neaktivan dok se ne potvrdi e-pošta
-        user.save()
-
-        # Kreiranje instance UserProfile objekta
-        profile = UserProfile(user=user)
-        profile.save()
-
-        # Slanje verifikacijskog e-maila
-        self.send_verification_email(user)
-
-        return redirect('MyApp:checkview')
-
-    def send_verification_email(self, user):
-        token = default_token_generator.make_token(user)
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        current_site = get_current_site(self.request)
-        verification_url = reverse_lazy('MyApp:activateaccountview', kwargs={'uid': uid, 'token': token})
-        verification_link = f"{current_site}{verification_url}"
-        subject = 'Verify Your Account'
-        message = f'Please verify your account by clicking the following link:\n\n{verification_link}'
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
 
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
-    template_name = 'registration.html'
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -131,17 +64,16 @@ class UserRegistrationView(generics.CreateAPIView):
         response = super().post(request, *args, **kwargs)
         return redirect('MyApp:checkview')
 
-class UserListView(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserRegistrationSerializer
+
 
 class SimpleListView(ListView):
-    queryset = User.objects.all()
+    queryset = get_user_model().objects.all()
     context_object_name = 'korisnici'
     template_name = 'simple_list.html'
 
+
 class UserDetailView(DetailView):
-    model = User
+    model = get_user_model()
     context_object_name = 'user'
     template_name = 'user_detail.html'
 
@@ -149,16 +81,20 @@ class UserDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         user = self.get_object()
         profile = get_object_or_404(UserProfile, user=user)
-        ip_addresses = profile.get_ip_addresses()  # koristi metodu get_ip_addresses() umjesto split(',') kako bi dobili listu IP adresa
-        current_ip = self.request.META['REMOTE_ADDR']  # dobivanje trenutne IP adrese korisnika
+        ip_addresses = profile.get_ip_addresses()
+        current_ip = self.request.META['REMOTE_ADDR']
         context['ip_addresses'] = ip_addresses
         context['current_ip'] = current_ip
         return context
 
+
+def verification_failed(request):
+    return render(request, 'verification_failed.html')
+
 class UserDeleteView(DeleteView):
-    model = User
+    model = get_user_model()
     template_name = 'user_delete.html'
-    success_url = reverse_lazy('MyApp:simplelistview')
+    success_url = reverse_lazy('MyApp:indexview')
 
 
 class ActivateAccountView(TemplateView):
@@ -167,7 +103,7 @@ class ActivateAccountView(TemplateView):
     def get(self, request, uid, token):
         User = get_user_model()
         try:
-            uid = force_text(urlsafe_base64_decode(uid))
+            uid = force_str(urlsafe_base64_decode(uid))
             user = User.objects.get(pk=uid)
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
             user = None
@@ -179,44 +115,59 @@ class ActivateAccountView(TemplateView):
         else:
             return redirect('MyApp:indexview')
 
-#######################################################
-
-def send_verification_email(request):
-    user = request.user
-    ip_address = request.META.get('REMOTE_ADDR')
-
+def send_verification_email(request, user, ip_address):
     # Generate a verification token for the IP address
     token = default_token_generator.make_token(user)
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
 
     # Construct the verification link
-    verification_link = reverse('MyApp:verifyipaddress', kwargs={'token': token})
+    verification_link = reverse('MyApp:verifyipaddress', kwargs={'uid': uid, 'token': token})
     verification_url = request.build_absolute_uri(verification_link)
+
+    # Generate the context for the email template
+    context = {
+        'user': user,
+        'verification_link': verification_url,
+        'uid': uid,
+    }
+
+    # Render the email template with the given context
+    email_body = render_to_string('email/ip_verification.html', context)
 
     # Send the verification email
     subject = 'IP Address Verification'
-    message = f'Please verify your new IP address ({ip_address}) by clicking the following link:\n\n{verification_url}'
     from_email = settings.DEFAULT_FROM_EMAIL
     to_email = user.email
 
-    send_mail(subject, message, from_email, [to_email])
+    send_mail(subject, email_body, from_email, [to_email])
 
     # Redirect the user to a success page or appropriate view
     return redirect('MyApp:verificationemailsent')
 
-def verify_ip_address(request, token):
-    user = request.user
-    ip_address = request.META.get('REMOTE_ADDR')
 
-    # Check if the token is valid and associated with the user
-    if default_token_generator.check_token(user, token):
-        # Add the new IP address to the user's list
-        user_profile = get_object_or_404(UserProfile, user=user)
+def verify_ip_address(request, uid, token):
+    User = get_user_model()
+    try:
+        # Dekodiraj UID iz baze64 reprezentacije
+        uid = force_str(urlsafe_base64_decode(uid))
+        # Pronađi korisnika na osnovu dekodiranog UID-a
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        ip_address = request.META.get('REMOTE_ADDR')
+        # Dodaj novu IP adresu u listu verifikovanih IP adresa korisnika
+        user_profile = UserProfile.objects.get(user=user)
         user_profile.add_ip_address(ip_address)
-
-        # Redirect the user to the login page or appropriate view
-        return redirect('MyApp:loginview')
+        # Sačuvaj promene
+        user_profile.save()
+        # Nastavi sa procesom autentifikacije
+        login(request, user)
+        # Preusmeri korisnika na prikaz profila
+        return redirect('MyApp:profileview')
     else:
-        # Handle the case when the token is invalid
+        # Obradi slučaj kada je token nevažeći
         return redirect('MyApp:verificationfailed')
 
 
@@ -224,30 +175,186 @@ def verify_ip_address(request, token):
 def profile_view(request):
     return render(request, 'profile.html')
 
+
 def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+
         user = authenticate(request, username=username, password=password)
 
-        if user is not None:
-            # Check if the user's IP address is in their IP addresses list
+        if user is not None and user.is_active:
             ip_address = request.META.get('REMOTE_ADDR')
             user_profile = get_object_or_404(UserProfile, user=user)
-            ip_addresses = user_profile.ip_addresses.split(',') if user_profile.ip_addresses else []
+            ip_addresses = user_profile.get_ip_addresses()
 
-            if ip_address not in ip_addresses:
-                # Redirect the user to the email verification page
-                return redirect('MyApp:sendverificationemail')
-
-            # Continue with the authentication process
-            login(request, user)
-            return redirect('MyApp:profileview')
+            if ip_address in ip_addresses:
+                # User's IP address is already verified, proceed with login
+                login(request, user)
+                return redirect('MyApp:profileview')
+            else:
+                # Send verification email and redirect to verification email sent page
+                return send_verification_email(request, user, ip_address)
         else:
-            return render(request, 'login.html', {'error': 'Invalid username or password'})
-    else:
-        return render(request, 'login.html')
+            # Wrong credentials, display error message
+            messages.error(request, 'Pogrešni podaci.')
+
+    return render(request, 'login.html')
 
 def logout_view(request):
     logout(request)
     return redirect('MyApp:indexview')
+##############################################POST###################################
+
+
+class PostCreateView(CreateView):
+    model = Post
+    fields = ['title', 'category', 'text', 'image']
+    template_name = 'post_create.html'
+    success_url = reverse_lazy('MyApp:post_list')
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user.userprofile
+
+        # Obrada i spremanje slike
+        image = form.cleaned_data.get('image')
+        if image:
+            # Postoji odabrana slika
+            form.instance.image = image
+
+        response = super().form_valid(form)
+
+        # Stvaranje JSON datoteke
+        post = form.instance
+        PostSerializer.save_as_json(post)
+
+        return response
+
+
+class PostEditView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = Post
+    fields = ['title', 'category', 'text', 'image']
+    template_name = 'post_edit.html'
+    success_url = reverse_lazy('MyApp:post_list')
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user.userprofile
+
+        # Obrada i spremanje slike
+        image = form.cleaned_data.get('image')
+        if image:
+            # Postoji odabrana slika
+            form.instance.image = image
+
+        return super().form_valid(form)
+
+    def get_object(self, queryset=None):
+        slug = self.kwargs.get('slug')
+        return get_object_or_404(Post, slug=slug)
+
+    def test_func(self):
+        obj = self.get_object()
+        if obj.author.user != self.request.user and not self.request.user.is_superuser:
+            raise PermissionDenied("Niste ovlašteni za uređivanje ovog posta.")
+        return True
+
+
+class PostDeleteView(UserPassesTestMixin, DeleteView):
+    model = Post
+    template_name = 'post_delete.html'
+    success_url = reverse_lazy('MyApp:post_list')
+
+    def test_func(self):
+        obj = self.get_object()
+        return obj.author.user == self.request.user or self.request.user.is_superuser
+
+
+class PostListView(ListView):
+    model = Post
+    template_name = 'post_list.html'
+    context_object_name = 'posts'
+    paginate_by = 1
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        category = self.request.GET.get('category')
+        search = self.request.GET.get('search')
+
+        if category:
+            queryset = queryset.filter(category=category)
+
+        if search:
+            queryset = queryset.filter(title__icontains=search)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        post_list = self.get_queryset()
+
+        per_page = self.request.GET.get('per_page')  # Dobivanje vrijednosti per_page parametra
+        paginator = Paginator(post_list, per_page) if per_page else Paginator(post_list, self.paginate_by)
+
+        page = self.request.GET.get('page')
+        try:
+            posts = paginator.page(page)
+        except PageNotAnInteger:
+            posts = paginator.page(1)
+        except EmptyPage:
+            posts = paginator.page(paginator.num_pages)
+
+        context['page_obj'] = posts
+        return context
+
+
+class PostDetailView(DetailView):
+    model = Post
+    template_name = 'post_detail.html'
+    context_object_name = 'post'
+
+
+#####################################COMMENT###############################
+
+
+class CreateKomentarView(CreateView):
+    model = Komentar
+    fields = ['text']
+    context_object_name = "komentari"
+    template_name = 'create_komentar.html'
+    http_method_names = ['get', 'post']
+
+    def get_success_url(self):
+        return reverse('MyApp:post_detail', kwargs={'pk': self.object.post.pk})
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user.userprofile
+        form.instance.post_id = self.kwargs['post_id']
+        return super().form_valid(form)
+
+class DeleteKomentarView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+    model = Komentar
+    template_name = 'delete_komentar.html'
+    http_method_names = ['post']
+
+    def get_success_url(self):
+        return reverse('MyApp:post_detail', kwargs={'pk': self.object.post.pk})
+
+
+    def test_func(self):
+        komentar = self.get_object()
+        user = self.request.user
+        return user.is_superuser or komentar.author.user == user
+
+    def delete(self, request, *args, **kwargs):
+        self.object = self.get_object()
+
+        # Check if the user is authorized to delete the comment
+        if not self.test_func():
+            return HttpResponseForbidden("You are not allowed to delete this comment.")
+
+        # Delete the comment
+        self.object.delete()
+
+        # Redirect to the success URL after deletion
+        return HttpResponseRedirect(self.get_success_url())

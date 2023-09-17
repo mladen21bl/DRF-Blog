@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-
 {% block content %}
-  <h1 style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">Welcome, {{ request.user.username }}</h1>
+  <div style="text-align: center; margin-top:250px; font-family: 'Times New Roman', serif;">
+    <h1 style="display: inline-block; font-size:3.5em">Dobrodošao {{ request.user.username }}</h1><br>
+  </div>
 {% endblock %}

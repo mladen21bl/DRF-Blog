@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2 style="text-align: center; font-family: 'Times New Roman', sans-serif;">Napiši svoj komentar</h2>
+  <form method="post" style="text-align: center;">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" style="font-family: 'Times New Roman', sans-serif; background-color: orange; color: white;>">Komentariši</button>
+  </form>
+{% endblock %}

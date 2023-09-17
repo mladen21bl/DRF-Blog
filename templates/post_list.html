@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Category filter form -->
+<form method="GET" action="{% url 'MyApp:post_list' %}" style="text-align: center; margin-bottom: 20px; margin-top: 15px;">
+  <label for="category" style="font-family: 'Times New Roman', sans-serif; font-size:1.2em;">Pretraži po kategorijama:</label>
+  <select name="category" id="category" style="font-family: 'Times New Roman', sans-serif;">
+    <option value="">SVE</option>
+    <option value="politika" {% if request.GET.category == 'politika' %}selected{% endif %}>Politika</option>
+    <option value="sport" {% if request.GET.category == 'sport' %}selected{% endif %}>Sport</option>
+    <option value="ekonomija" {% if request.GET.category == 'ekonomija' %}selected{% endif %}>Ekonomija</option>
+    <option value="umjetnost" {% if request.GET.category == 'umjetnost' %}selected{% endif %}>Umjetnost</option>
+    <option value="astrologija" {% if request.GET.category == 'astrologija' %}selected{% endif %}>Astrologija</option>
+    <option value="moda" {% if request.GET.category == 'moda' %}selected{% endif %}>Moda</option>
+  </select>
+  <!-- Add hidden field for search value -->
+  <input type="hidden" name="search" value="{{ request.GET.search }}">
+  <button type="submit" style="font-family: 'Times New Roman', sans-serif;">Filter</button>
+</form>
+
+<!-- Search form -->
+<form method="GET" action="{% url 'MyApp:post_list' %}" style="text-align: center; margin-bottom: 20px;">
+  <label for="search" style="font-family: 'Times New Roman', sans-serif; font-size:1.3em;">Pretraži po naslovu:</label>
+  <input type="text" name="search" id="search" value="{{ request.GET.search }}" style="font-family: 'Times New Roman', sans-serif;">
+  <button type="submit" style="font-family: 'Times New Roman', sans-serif;">Pretraži</button>
+</form>
+
+<!-- Pagination form -->
+<form method="GET" action="{% url 'MyApp:post_list' %}" style="text-align: center; margin-bottom: 20px;">
+  <label for="per_page" style="font-family: 'Times New Roman', sans-serif; font-size:1.2em;">Broj postova po stranici:</label>
+  <select name="per_page" id="per_page" style="font-family: 'Times New Roman', sans-serif;">
+    <option value="1" {% if request.GET.per_page == '1' %}selected{% endif %}>1</option>
+    <option value="3" {% if request.GET.per_page == '3' %}selected{% endif %}>3</option>
+    <option value="5" {% if request.GET.per_page == '5' %}selected{% endif %}>5</option>
+    <option value="10" {% if request.GET.per_page == '10' %}selected{% endif %}>10</option>
+</select>
+
+  <!-- Add hidden fields for search and category values -->
+  <input type="hidden" name="search" value="{{ request.GET.search }}">
+  <input type="hidden" name="category" value="{{ request.GET.category }}">
+  <button type="submit" style="font-family: 'Times New Roman', sans-serif;">Postavi</button>
+</form>
+
+<div style="display: flex; justify-content: center; margin-bottom: 50px;">
+  {% if page_obj %}
+    <div class="post-container">
+      {% for post in page_obj %}
+        <div class="post-box">
+          <a href="{% url 'MyApp:post_detail' post.slug %}" style="text-decoration: none;">
+            <img src="{{ post.image.url }}" alt="{{ post.title }}" class="post-image">
+            <h2 class="post-titlepost-title" style="font-family: 'Times New Roman', sans-serif; color: #ffffff;">{{ post.title }}</h2>
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>Nema postova.</p>
+  {% endif %}
+</div>
+
+{% if page_obj.has_other_pages %}
+  <div style="display: flex; justify-content: center; margin-top: 20px; margin-bottom: 20px;">
+    {% if page_obj.number > 1 %}
+      {% if page_obj.number > 3 %}
+        <a href="?category={{ request.GET.category|urlencode }}&page=1&per_page={{ request.GET.per_page }}" class="pagination-link">1</a>
+        {% if page_obj.number > 4 %}
+          <span class="pagination-dots">...</span>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+
+    {% for i in page_obj.paginator.page_range %}
+      {% if i >= page_obj.number|add:"-2" and i <= page_obj.number|add:"2" %}
+        {% if i == page_obj.number %}
+          <a href="?category={{ request.GET.category|urlencode }}&page={{ i }}&per_page={{ request.GET.per_page }}" class="pagination-link current-page">{{ i }}</a>
+        {% else %}
+          <a href="?category={{ request.GET.category|urlencode }}&page={{ i }}&per_page={{ request.GET.per_page }}" class="pagination-link">{{ i }}</a>
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+
+    {% if page_obj.number < page_obj.paginator.num_pages %}
+      {% if page_obj.number|add:"2" < page_obj.paginator.num_pages %}
+        {% if page_obj.number|add:"1" < page_obj.paginator.num_pages %}
+          <span class="pagination-dots">.....</span>
+        {% endif %}
+        <a href="?category={{ request.GET.category|urlencode }}&page={{ page_obj.paginator.num_pages }}&per_page={{ request.GET.per_page }}" class="pagination-link">{{ page_obj.paginator.num_pages }}</a>
+      {% endif %}
+    {% endif %}
+  </div>
+{% endif %}
+<style>
+  .post-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+  }
+
+  .post-box {
+    width: 600px;
+    height: 450px;
+    padding-bottom: 20px;
+    padding-top: 5px;
+    padding-left: 5px;
+    padding-right: 5px;
+    background-color: #215070;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
+    border-radius: 8px;
+  }
+
+  .post-box:hover {
+    transform: scale(1.05);
+  }
+
+  .post-image {
+    width: 100%;
+    height: 350px;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  .post-title {
+    margin-top: 10px;
+    font-family: 'Times New Roman', sans-serif;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  .pagination-link {
+    margin-bottom: 30px;
+    font-size: 1.8em;
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    background-color: #ddd;
+    border-radius: 4px;
+    text-align: center;line-height: 40px;
+    text-decoration: none;
+    color: #333;
+    margin-right: 5px;
+  }
+
+  .pagination-link:hover {
+    background-color: #bbb;
+  }
+
+  .current-page {
+    margin-bottom: 30px;
+    font-size: 1.8em;
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    background-color: #215070;
+    border-radius: 4px;
+    text-align: center;
+    line-height: 40px;
+    text-decoration: none;
+    color: #fff;
+    margin-right: 5px;
+  }
+
+  .pagination-dots {
+    margin-bottom: 30px;
+    font-size: 1.8em;
+  }
+</style>
+{% endblock %}

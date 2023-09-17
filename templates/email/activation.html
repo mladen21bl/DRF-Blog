@@ -1,14 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Account Activation</title>
-</head>
-<body>
-    <h1>Activate your account</h1>
-    <p>Hello {{ user.username }},</p>
-    <p>Thank you for registering an account. Please click the link below to activate your account:</p>
-    <a href="{{ activation_link }}">Activate Account</a>
-    <p>If you didn't register an account, you can ignore this email.</p>
-</body>
-</html>
+{% autoescape off %}
+Aktiviraj svoj profil
+Zdravo {{ user.username }},
+Klikni na link ispod kako bi aktivirao svoj nalog:
+<a href="{{ activation_link }}">Aktiviraj nalog</a>
+Ako se nisi registorivao, ignorisi ovaj email.
+{% endautoescape %}

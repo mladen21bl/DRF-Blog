@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container" style="margin-bottom:50px;">
+  <div class="container" style="margin: 0 auto; text-align: center;">
+    <h1>Delete Komentar</h1>
+    <p>Are you sure you want to delete this komentar?</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Delete</button>
+      <a href="{% url 'MyApp:post_detail' post_id=object.post.id %}" class="btn btn-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
+In the updated template, the cancel button's href attribute is modified to redirect to the post detail page (MyApp:post_detail) by passing the post_id parameter using object.post.id. This assumes that your `post_detail

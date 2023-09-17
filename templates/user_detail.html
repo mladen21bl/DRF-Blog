@@ -2,16 +2,20 @@
 {% load static %}
 
 {% block content %}
-<p>Username: {{ user.username }}</p>
-<p>Email: {{ user.email }}</p>
-<p>IP Addresses:</p>
-<ul>
-{% for ip_address in ip_addresses %}
-<li>{{ ip_address }}</li>
-{% endfor %}
-</ul>
-<p>Password: *****</p>
-<p><a class="btn btn-primary" href="{% url 'MyApp:userdeleteview' pk=user.pk %}">Delete</a></p>
-<p><a href="{% url 'MyApp:password_reset' %}">Reset Password</a></p>
-<p><a href="{% url 'MyApp:mypassword_reset' %}">Reset My Password</a></p>
+<div class="container" style="margin-left:350px; margin-top:150px; font-size:1.7em;">
+  <p>Username: {{ user.username }}</p>
+  <p>Email: {{ user.email }}</p>
+  <p>Status: {{ user.userprofile.user_type }}</p>
+  <p>IP Addresses:</p>
+  <ul>
+    {% for ip_address in user.userprofile.get_ip_addresses %}
+      <li>{{ ip_address }}</li>
+    {% endfor %}
+  </ul>
+  <p>Password: *****</p>
+  <p>
+    <a class="btn btn-danger" href="{% url 'MyApp:userdeleteview' pk=user.pk %}">Delete</a>
+    <a class="btn btn-primary" href="{% url 'MyApp:password_reset' %}" style="margin-left:20px;">Reset Password</a>
+  </p>
+</div>
 {% endblock %}
